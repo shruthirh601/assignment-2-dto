@@ -16,8 +16,9 @@ import java.util.List;
 @RestController
 public class DeveloperController {
 
+    private final DeveloperServices developerServices;
+
     @Autowired
-    public DeveloperServices developerServices;
     public DeveloperController(DeveloperServices developerServices) {
         this.developerServices = developerServices;
     }
@@ -25,7 +26,7 @@ public class DeveloperController {
     @PostMapping("/dev")
     public ResponseEntity<DeveloperDTO> createDeveloper(@RequestBody @Valid DeveloperDTO developer){
         DeveloperDTO dev = developerServices.createDeveloper(developer);
-        return (dev!=null)? new  ResponseEntity<>(dev, HttpStatus.OK):new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>(dev, HttpStatus.CREATED);
     }
 
     @GetMapping("/dev/{id}")

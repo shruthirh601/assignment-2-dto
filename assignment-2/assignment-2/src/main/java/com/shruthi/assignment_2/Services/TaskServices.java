@@ -30,12 +30,12 @@ public class TaskServices {
 
     public TaskDTO createTask(@Valid TaskDTO newTask) {
         Developer developer = developerRepository.findById(newTask.getDeveloperId())
-            .orElseThrow(() -> new RuntimeException("Developer not found"));
+                .orElseThrow(() -> new RuntimeException("Developer not found")); // Use custom exception
 
-        long inProgressCount = developer.getTasks().stream()
-                .filter(task -> task.getStatus() == TaskStatus.IN_PROGRESS)
-                .count();
+        // IMPROVEMENT: Use the efficient repository query
+        int inProgressCount = developerRepository.countInProgressTasks(developer.getId());
 
+        // Check constraint before creating the task
         if (newTask.getStatus() == TaskStatus.IN_PROGRESS && inProgressCount >= 5) {
             throw new MaxInProgressTasksException("Developer already has 5 IN_PROGRESS tasks");
         }
@@ -63,16 +63,18 @@ public class TaskServices {
 
     public TaskDTO updateTaskStatus(Long id, TaskStatus newStatus) {
         Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
+                .orElseThrow(() -> new RuntimeException("Task not found")); // Use custom exception
+
 
         if (task.getStatus() == TaskStatus.COMPLETED) {
             throw new TaskAlreadyCompletedException("Cannot update a COMPLETED task");
         }
 
-        if (newStatus == TaskStatus.IN_PROGRESS) {
-            long inProgressCount = task.getDeveloper().getTasks().stream()
-                    .filter(t -> t.getStatus() == TaskStatus.IN_PROGRESS)
-                    .count();
+
+        if (newStatus == TaskStatus.IN_PROGRESS && task.getStatus() != TaskStatus.IN_PROGRESS) {
+            // IMPROVEMENT: Use efficient repository query for counting
+            Long developerId = task.getDeveloper().getId();
+            int inProgressCount = developerRepository.countInProgressTasks(developerId);
 
             if (inProgressCount >= 5) {
                 throw new MaxInProgressTasksException("Developer already has 5 IN_PROGRESS tasks");
@@ -86,21 +88,10 @@ public class TaskServices {
     }
 
     public List<TaskDTO> getTasksOverdue() {
-        List<Task> overdueTasks = taskRepository.findAll().stream()
-                .filter(task -> task.getDueDate().isBefore(LocalDate.now()) &&
-                        task.getStatus() != TaskStatus.COMPLETED)
-                .collect(Collectors.toList());
+        List<Task> overdueTasks = taskRepository.findOverdueTasks(LocalDate.now());
 
         return overdueTasks.stream()
-                .map(task -> new TaskDTO(
-                        task.getId(),
-                        task.getName(),
-                        task.getDescription(),
-                        task.getStatus(),
-                        task.getPriority(),
-                        task.getDueDate(),
-                        task.getDeveloper().getId())
-                )
+                .map(this::convertTaskToDTO)
                 .collect(Collectors.toList());
     }
 
@@ -112,6 +103,9 @@ public class TaskServices {
         t.setDueDate(saved.getDueDate());
         t.setPriority(saved.getPriority());
         t.setStatus(saved.getStatus());
+        if (saved.getDeveloper() != null) {
+            t.setDeveloperId(saved.getDeveloper().getId());
+        }
         return t;
     }
 }

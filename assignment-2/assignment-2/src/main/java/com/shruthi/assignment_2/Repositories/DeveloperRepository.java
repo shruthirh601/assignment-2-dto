@@ -10,10 +10,12 @@ import java.util.List;
 
 @Repository
 public interface DeveloperRepository extends JpaRepository<Developer, Long> {
-    @Query("SELECT d FROM Developer d JOIN d.projects p WHERE p.id = :projectId")
+    @Query("SELECT d FROM Developer d JOIN FETCH d.projects p WHERE p.id = :projectId")
     List<Developer> findDevelopersByProjectId(@Param("projectId") Long projectId);
+
     @Query("SELECT COUNT(t) FROM Task t WHERE t.developer.id = :developerId AND t.status = 'IN_PROGRESS'")
     int countInProgressTasks(@Param("developerId") Long developerId);
+
     @Query(value = """
     SELECT d.id, d.name, COUNT(t.id) AS overdue_count
     FROM developer d

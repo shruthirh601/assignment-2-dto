@@ -12,6 +12,7 @@ import java.util.Set;
 @Entity
 @Table(name = "project")
 @Builder
+@EqualsAndHashCode(exclude = {"developers"})
 public class Project {
 
     @Id
